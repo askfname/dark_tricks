@@ -1,0 +1,25 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="?attr/actionBarSize"
+    android:gravity="center_vertical"
+    android:paddingEnd="4dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:text="@string/app_name"
+        android:textAppearance="?attr/textAppearanceTitleLarge" />
+
+    <ImageButton
+        android:id="@+id/github_button"
+        android:layout_width="48dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end|center_vertical"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/github_button_description"
+        android:padding="6dp"
+        android:src="@drawable/ic_github"
+        android:tint="?attr/colorOnSurface" />
+
+</FrameLayout>

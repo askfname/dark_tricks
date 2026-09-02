@@ -19,7 +19,7 @@
             android:value="true" />
         <meta-data
             android:name="xposeddescription"
-            android:value="Dark_Eyes_&apos;s tricks" />
+            android:value="Android 15+系统界面和快捷键调整" />
         <meta-data
             android:name="xposedscope"
             android:resource="@array/scopes" />

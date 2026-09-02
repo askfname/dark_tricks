@@ -1,83 +1,84 @@
 <resources>
-    <string name="app_name">Dark Tricks</string>
+    <string name="app_name">Dark Tricks Mod</string>
+    <string name="github_button_description">GitHub</string>
 
-    <string name="show4gForLte_title">Show 4G</string>
-    <string name="show4gForLte_summary">Always show 4G instead of LTE</string>
+    <string name="show4gForLte_title">显示 4G</string>
+    <string name="show4gForLte_summary">始终显示 4G 而不是 LTE 图标（需要重启）</string>
 
-    <string name="hideLtePlus_title">Hide LTE+/4G+</string>
-    <string name="hideLtePlus_summary">Always display LTE/4G even when LTE+/4G+ is available</string>
+    <string name="hideLtePlus_title">隐藏 LTE+/4G+</string>
+    <string name="hideLtePlus_summary">即使设备使用 LTE+/4G+，也始终显示 LTE/4G（需要重启）</string>
 
-    <string name="hideNextAlarm_title">Hide next alarm</string>
-    <string name="hideNextAlarm_summary">Remove icon from the status bar and next alarm from the quick settings and the lockscreen</string>
+    <string name="hideNextAlarm_title">隐藏下一个闹钟</string>
+    <string name="hideNextAlarm_summary">从状态栏、快捷设置和锁屏界面移除闹钟图标</string>
 
-    <string name="hideBuildVersion_title">Hide build version</string>
-    <string name="hideBuildVersion_summary">Remove build version from the quick settings when developer options are enabled</string>
+    <string name="hideBuildVersion_title">隐藏版本号</string>
+    <string name="hideBuildVersion_summary">启用开发者选项后，从快捷设置中移除系统版本号</string>
 
-    <string name="hideVpn_title">Hide VPN notification</string>
-    <string name="hideVpn_summary">Remove icon from the status bar and notification from the quick settings</string>
+    <string name="hideVpn_title">隐藏 VPN 通知</string>
+    <string name="hideVpn_summary">从状态栏移除 VPN 图标，并从快捷设置中移除 VPN 通知</string>
 
-    <string name="hideCert_title">Hide user certificate notification</string>
-    <string name="hideCert_summary">Remove \"Network may be monitored\" from the quick settings</string>
+    <string name="hideCert_title">隐藏用户证书通知</string>
+    <string name="hideCert_summary">从快捷设置中移除“网络可能受到监控”的提示</string>
 
-    <string name="hideAdGuard_title">Hide AdGuard apps from active apps</string>
-    <string name="hideAdGuard_summary">Don\'t show AdGuard and AdGuard VPN in the active apps notification in the quick settings</string>
+    <string name="hideAdGuard_title">从活动应用中隐藏 AdGuard</string>
+    <string name="hideAdGuard_summary">不在快捷设置的活动应用通知中显示 AdGuard 和 AdGuard VPN</string>
 
-    <string name="circleActiveApps_title">Collapse active apps notification</string>
-    <string name="circleActiveApps_summary">Always show the number of active apps in a small circle in the quick settings</string>
+    <string name="circleActiveApps_title">折叠活动应用通知</string>
+    <string name="circleActiveApps_summary">始终在快捷设置中以小圆圈显示活动应用数量</string>
 
-    <string name="hideAdbNotification_title">Hide ADB notification</string>
-    <string name="hideAdbNotification_summary">Remove the notification when USB debugging is enabled</string>
+    <string name="hideAdbNotification_title">隐藏 ADB 通知</string>
+    <string name="hideAdbNotification_summary">启用 USB 调试后移除相关通知</string>
 
-    <string name="doubleTapToSleep_title">Double tap to sleep</string>
-    <string name="doubleTapToSleep_summary">Double tap on the status bar to turn off the screen</string>
+    <string name="doubleTapToSleep_title">双击息屏</string>
+    <string name="doubleTapToSleep_summary">双击状态栏关闭屏幕</string>
 
-    <string name="quickPulldown_title">Quick pulldown to expand the quick settings</string>
-    <string name="quickPulldown_disabled">Disabled</string>
-    <string name="quickPulldown_right">Right edge of status bar</string>
-    <string name="quickPulldown_left">Left edge of status bar</string>
+    <string name="quickPulldown_title">快速下拉展开快捷设置</string>
+    <string name="quickPulldown_disabled">已禁用</string>
+    <string name="quickPulldown_right">状态栏右侧边缘</string>
+    <string name="quickPulldown_left">状态栏左侧边缘</string>
 
-    <string name="proximityWakeUp_title">Prevent accidental wake up</string>
-    <string name="proximityWakeUp_summary">Check the proximity sensor before waking up the phone</string>
+    <string name="proximityWakeUp_title">防止误唤醒</string>
+    <string name="proximityWakeUp_summary">唤醒手机前检查距离传感器</string>
 
-    <string name="powerTorch_title">Power key toggles torch</string>
-    <string name="powerTorch_summary">Toggle torch by long pressing power key while screen is off</string>
+    <string name="powerTorch_title">电源键切换手电筒</string>
+    <string name="powerTorch_summary">屏幕关闭时长按电源键切换手电筒</string>
 
-    <string name="skipTrack_title">Volume keys skip track</string>
-    <string name="skipTrack_summary">Skip track by long pressing volume keys while screen is off</string>
+    <string name="skipTrack_title">音量键切换曲目</string>
+    <string name="skipTrack_summary">屏幕关闭时长按音量键切换曲目</string>
 
-    <string name="screenOffNotifications_title">Screen off notifications only</string>
-    <string name="screenOffNotifications_summary">Prevent sound and vibration when screen is on</string>
+    <string name="screenOffNotifications_title">仅在息屏时通知</string>
+    <string name="screenOffNotifications_summary">屏幕亮起时禁止通知声音和振动</string>
 
-    <string name="lessNotifications_title">Less frequent notifications (sound and vibration)</string>
-    <string name="lessNotifications_disabled">Disabled</string>
-    <string name="lessNotifications_5s">Mute for 5 seconds</string>
-    <string name="lessNotifications_10s">Mute for 10 seconds</string>
-    <string name="lessNotifications_30s">Mute for 30 seconds</string>
-    <string name="lessNotifications_1m">Mute for 1 minute</string>
-    <string name="lessNotifications_2m">Mute for 2 minutes</string>
+    <string name="lessNotifications_title">减少通知频率（声音和振动）</string>
+    <string name="lessNotifications_disabled">已禁用</string>
+    <string name="lessNotifications_5s">静音 5 秒</string>
+    <string name="lessNotifications_10s">静音 10 秒</string>
+    <string name="lessNotifications_30s">静音 30 秒</string>
+    <string name="lessNotifications_1m">静音 1 分钟</string>
+    <string name="lessNotifications_2m">静音 2 分钟</string>
 
-    <string name="gestureHeight_title">Back gesture height</string>
-    <string name="gestureHeight_everywhere">Everywhere</string>
-    <string name="gestureHeight_ten">Bottom 90% of screen</string>
-    <string name="gestureHeight_twenty">Bottom 80% of screen</string>
-    <string name="gestureHeight_thirty">Bottom 70% of screen</string>
-    <string name="gestureHeight_fourty">Bottom 60% of screen</string>
-    <string name="gestureHeight_fifty">Bottom 50% of screen</string>
-    <string name="gestureHeight_sixty">Bottom 40% of screen</string>
-    <string name="gestureHeight_seventy">Bottom 30% of screen</string>
-    <string name="gestureHeight_eighty">Bottom 20% of screen</string>
-    <string name="gestureHeight_ninety">Bottom 10% of screen</string>
+    <string name="gestureHeight_title">返回手势高度</string>
+    <string name="gestureHeight_everywhere">整个屏幕</string>
+    <string name="gestureHeight_ten">屏幕底部 90%</string>
+    <string name="gestureHeight_twenty">屏幕底部 80%</string>
+    <string name="gestureHeight_thirty">屏幕底部 70%</string>
+    <string name="gestureHeight_fourty">屏幕底部 60%</string>
+    <string name="gestureHeight_fifty">屏幕底部 50%</string>
+    <string name="gestureHeight_sixty">屏幕底部 40%</string>
+    <string name="gestureHeight_seventy">屏幕底部 30%</string>
+    <string name="gestureHeight_eighty">屏幕底部 20%</string>
+    <string name="gestureHeight_ninety">屏幕底部 10%</string>
 
-    <string name="cursorControl_title">Volume keys control cursor</string>
-    <string name="cursorControl_disabled">Disabled</string>
-    <string name="cursorControl_upleft">Volume up/down moves cursor left/right</string>
-    <string name="cursorControl_upright">Volume up/down moves cursor right/left</string>
+    <string name="cursorControl_title">音量键控制光标</string>
+    <string name="cursorControl_disabled">已禁用</string>
+    <string name="cursorControl_upleft">音量加/减键使光标向左/右移动</string>
+    <string name="cursorControl_upright">音量加/减键使光标向右/左移动</string>
 
-    <string name="customCarrierText_title">Edit carrier text</string>
+    <string name="customCarrierText_title">编辑运营商名称</string>
 
-    <string name="OutlookPolicy_title">Bypass Outlook device policy</string>
-    <string name="OutlookPolicy_summary">Remove screen lock requirements and the need to enable Device admin</string>
+    <string name="OutlookPolicy_title">绕过 Outlook 设备策略</string>
+    <string name="OutlookPolicy_summary">移除屏幕锁定要求，并取消启用设备管理员的要求</string>
 
-    <string name="PhoneRecorder_title">Disable phone recording warnings</string>
-    <string name="PhoneRecorder_summary">Silence warnings when starting and ending a call recording</string>
+    <string name="PhoneRecorder_title">禁用通话录音警告</string>
+    <string name="PhoneRecorder_summary">开始和结束通话录音时关闭警告提示音</string>
 </resources>
