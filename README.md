@@ -1,40 +1,47 @@
-## What this is
-Dark Tricks is an Android Xposed module (written in Java) that applies a set of system and app-level tweaks — e.g., long-press power for torch, volume-key media skip while screen-off, double-tap-to-sleep on QS, hide/alter various status bar indicators, custom carrier text, and other SystemUI and app-specific hooks. It’s intended for advanced Android users running an Xposed-compatible environment (LSPosed / Riru / classic Xposed) who want to customize SystemUI and behavior across platform and specific apps.
+### 本项目为 Dark Tricks Mod 版本，主要修复了 Android 15+ 设备上电源键开启手电筒的功能以及设置界面的汉化，原版地址 https://github.com/darkeyes84/dark_tricks
 
-This module is designed for Android 8.0, 8.1, 9, 10, 11, 12, 12.1, 13 and 14. Some tricks might not work on every version though. It has been tested on stock Android 14 on a Pixel 7 Pro. You can try it on other ROMs, but don't report bugs if something doesn't work.
+## 这是什么
 
-Version 3.0 and up are designed for Android 14 only. All older Android version must use version 2.31.
+Dark Tricks 是一个 Android Xposed 模块（使用 Java 编写），用于实现一系列系统级和应用级的功能调整，例如：长按电源键开启手电筒、息屏状态下使用音量键切换媒体曲目、在快速设置面板（QS）中双击息屏、隐藏/修改各种状态栏指示器、自定义运营商文字，以及针对 SystemUI 和特定应用的其他 Hook 功能。
 
-### Here is what the module can do:
+该模块面向使用 Xposed 兼容环境（LSPosed / Riru / 经典 Xposed）的高级 Android 用户，用于对 SystemUI 以及系统平台和特定应用的行为进行自定义。
 
-- Force dark theme even on light wallpaper (Android 8.1 only)
-- Replace voice assist with phone on lockscreen (Android 8.0 and 8.1 only)
-- Always show the navbar on the right when in landscape (Android 8.0, 8.1 and 9 only)
-- Hide next alarm on the lockscreen and in the quick settings and the icon in the status bar
-- Show 4G instead of LTE
-- Hide LTE+/4G+ (always show LTE/4G)
-- Hide ADB notification
-- Hide VPN notification
-- Hide "Network may be monitored"
-- Hide the build version in the QS when developer options are enabled (Android 10+)
-- Double tap to sleep on statusbar or lockscreen (Android 12+)
-- Quick pulldown for quick settings (Android 12+)
-- Volume keys control cursor
-- Volume keys skip track
-- Power key toggle torch (with proximity check)
-- Prevent accidental wake up
-- Less frequent notifications
-- Screen off notifications only
-- Change the carrier text
-- Bypass Outlook device policy
-- Quick unlock (Android 12+ but not Android 14)
-- Show battery duration estimate on expanded QS (Android 12+)
-- Force small clock on lockscreen (Android 12 and 12.1 only)
-- Adjust height for back gesture (Android 12+)
-- Expanded notifications (Android 12+ but not Android 14)
-- Silence phone call recording warnings (Android 14 only)
+本模块设计支持 Android 8.0、8.1、9、10、11、12、12.1、13 和 14。不过，部分功能可能无法在所有 Android 版本上正常工作。该模块已在原生 Android 14 的 Pixel 7 Pro 上进行测试。你也可以在其他 ROM 上尝试使用，但如果某些功能无法正常工作，请不要提交 Bug 报告。
 
-There is a simple user interface that can be launched through Xposed Manager to choose what mods that you want. A reboot is needed every time you change a setting for version 2.31 and older. Starting with version 3.0, all settings can be applied at runtime (except for Show 4G and Hide LTE+/4G+ which still require a reboot).
+**3.0 及更高版本仅针对 Android 14 设计。所有旧版 Android 必须使用 2.31 版本。**
+
+### 模块功能
+
+* 即使使用浅色壁纸，也强制启用深色主题（仅 Android 8.1）
+* 在锁屏界面将语音助手替换为电话功能（仅 Android 8.0 和 8.1）
+* 横屏时始终在右侧显示导航栏（仅 Android 8.0、8.1 和 9）
+* 隐藏锁屏界面和快速设置中的下一个闹钟，同时隐藏状态栏中的闹钟图标
+* 将 LTE 显示为 4G
+* 隐藏 LTE+/4G+，始终显示 LTE/4G
+* 隐藏 ADB 调试通知
+* 隐藏 VPN 通知
+* 隐藏“网络可能受到监控”提示
+* 开启开发者选项时，隐藏快速设置面板中的系统版本信息（Android 10+）
+* 在状态栏或锁屏界面双击息屏（Android 12+）
+* 快速下拉打开快速设置面板（Android 12+）
+* 使用音量键控制光标
+* 使用音量键切换上一首/下一首歌曲
+* 电源键切换手电筒（带距离传感器检测）
+* 防止意外唤醒屏幕
+* 降低通知出现的频率
+* 仅显示息屏通知
+* 修改运营商名称显示文字
+* 绕过 Outlook 设备策略限制
+* 快速解锁（Android 12+，但不支持 Android 14）
+* 在展开的快速设置面板中显示电池剩余时间估算（Android 12+）
+* 强制在锁屏界面使用小号时钟（仅 Android 12 和 12.1）
+* 调整返回手势的触摸区域高度（Android 12+）
+* 展开通知（Android 12+，但不支持 Android 14）
+* 静音电话录音警告提示（仅 Android 14）
+
+模块提供了一个简单的用户界面，可以通过 Xposed 管理器启动，用于选择需要启用的功能。
+对于 **2.31 及更早版本**，每次修改设置后都需要重启设备才能生效。
+从 **3.0 版本开始**，所有设置均可在运行时直接生效，但“显示 4G”和“隐藏 LTE+/4G+”这两个功能仍然需要重启设备。
 
 ### Stack
 - **Language(s):** Java (Android)
