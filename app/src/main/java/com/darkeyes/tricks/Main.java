@@ -40,12 +40,13 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.SystemClock;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.service.notification.StatusBarNotification;
 import android.telephony.TelephonyManager;
 import android.util.ArrayMap;
 import android.view.GestureDetector;
 import android.view.Gravity;
-import android.view.HapticFeedbackConstants;
 import android.view.InputDevice;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
@@ -133,6 +134,14 @@ public class Main implements IXposedHookZygoteInit, IXposedHookLoadPackage {
     private Object mEdgeBackGestureHandler;
     private boolean mOutlookPolicy;
     private boolean mPhoneRecorder;
+
+    // Power-key torch gesture state.  We deliberately do not consume the initial
+    // power-key DOWN event: Android 15+ must retain its native wake-up path.
+    private boolean mPowerTorchTracking;
+    private boolean mPowerTorchLongPressTriggered;
+    private long mPowerTorchDownTime;
+    private Runnable mPowerTorchLongPress;
+    private Vibrator mVibrator;
 
     public void initZygote(IXposedHookZygoteInit.StartupParam startupParam) {
         if (prefs == null) {
@@ -249,7 +258,7 @@ public class Main implements IXposedHookZygoteInit, IXposedHookLoadPackage {
                             keyEvent = KeyEvent.changeAction(keyEvent, KeyEvent.ACTION_UP);
                             keyIntent.putExtra(Intent.EXTRA_KEY_EVENT, keyEvent);
                             mAudioManager.dispatchMediaKeyEvent(keyEvent);
-                            callMethod(param.thisObject, "performHapticFeedback", new Class<?>[]{int.class, boolean.class, String.class}, HapticFeedbackConstants.LONG_PRESS, false, null);
+                            performHapticFeedbackSafely(mContext);
                         };
                     }
 
@@ -264,7 +273,7 @@ public class Main implements IXposedHookZygoteInit, IXposedHookLoadPackage {
                             keyEvent = KeyEvent.changeAction(keyEvent, KeyEvent.ACTION_UP);
                             keyIntent.putExtra(Intent.EXTRA_KEY_EVENT, keyEvent);
                             mAudioManager.dispatchMediaKeyEvent(keyEvent);
-                            callMethod(param.thisObject, "performHapticFeedback", new Class<?>[]{int.class, boolean.class, String.class}, HapticFeedbackConstants.LONG_PRESS, false, null);
+                            performHapticFeedbackSafely(mContext);
                         };
                     }
                 }
@@ -287,133 +296,119 @@ public class Main implements IXposedHookZygoteInit, IXposedHookLoadPackage {
             findAndHookMethodIfExists("com.android.server.policy.PhoneWindowManager", param.classLoader, "interceptKeyBeforeQueueing", KeyEvent.class, int.class, new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) {
-                    KeyEvent event = (KeyEvent) param.args[0];
-                    int keyCode = event.getKeyCode();
-                    Context context = (Context) getObjectField(param.thisObject, "mContext");
-                    Handler handler = (Handler) getObjectField(param.thisObject, "mHandler");
-                    final PowerManager.WakeLock wakeLockTorch = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "DarkTricks:Torch");
+                    final KeyEvent event = (KeyEvent) param.args[0];
+                    final int keyCode = event.getKeyCode();
+                    final Context context = (Context) getObjectField(param.thisObject, "mContext");
 
-                    if (mPowerDownLongPress == null) {
-                        mPowerDownLongPress = () -> {
-                            if (!mTorchEnabled) {
-                                synchronized (wakeLockTorch) {
-                                    mListenerTorch = new SensorEventListener() {
-                                        @Override
-                                        public void onSensorChanged(SensorEvent event) {
-                                            if (wakeLockTorch.isHeld())
-                                                wakeLockTorch.release();
-                                            if (mListenerTorch != null) {
-                                                mSensorManager.unregisterListener(mListenerTorch);
-                                                mListenerTorch = null;
-                                            }
-                                            if (event.values[0] >= mProximitySensor.getMaximumRange()) {
-                                                mPowerLongPress = true;
-                                                callMethod(param.thisObject, "performHapticFeedback", new Class<?>[]{int.class, boolean.class, String.class}, HapticFeedbackConstants.LONG_PRESS, false, null);
+                    /*
+                     * Android 15 introduced SingleKeyGestureDetector-based power-key handling.
+                     * The old implementation intercepted both DOWN/UP and synthesized another
+                     * POWER key through InputManager. That is unsafe on Android 15+: it can
+                     * recursively re-enter policy processing, interfere with wake-up, and the
+                     * legacy performHapticFeedback(...) reflection now resolves to a removed
+                     * overload and can kill system_server.
+                     *
+                     * New strategy:
+                     *   1. Only watch a physical POWER key that starts while the device is off.
+                     *   2. Never consume the original POWER DOWN/UP event.
+                     *   3. After the long-press timeout, toggle the torch and mark the gesture.
+                     *   4. Suppress PhoneWindowManager.powerLongPress() only when our torch
+                     *      gesture has actually fired.
+                     *
+                     * This leaves short-press wake/sleep and the system's normal power-key
+                     * state machine completely intact.
+                     */
+                    if (!mPowerTorch || keyCode != KeyEvent.KEYCODE_POWER)
+                        return;
 
-                                                try {
-                                                    mCameraManager.setTorchMode(mCameraId, !mTorchEnabled);
-                                                    mTorchEnabled = !mTorchEnabled;
-                                                } catch (Exception ignored) {
-                                                }
-                                            }
-                                        }
+                    if (event.getSource() == InputDevice.SOURCE_UNKNOWN)
+                        return;
 
-                                        @Override
-                                        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-                                        }
+                    if (mPowerManager == null)
+                        mPowerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
 
-                                    };
+                    if (mHandler == null)
+                        mHandler = (Handler) getObjectField(param.thisObject, "mHandler");
+
+                    if (mVibrator == null)
+                        mVibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        if (event.getRepeatCount() != 0)
+                            return;
+
+                        // Only a press that STARTS with the display/device non-interactive
+                        // can become the torch gesture. Interactive presses are left entirely
+                        // to Android's normal power-key policy.
+                        if (mPowerManager == null || mPowerManager.isInteractive())
+                            return;
+
+                        if (mPowerTorchLongPress != null && mHandler != null)
+                            mHandler.removeCallbacks(mPowerTorchLongPress);
+
+                        mPowerTorchTracking = true;
+                        mPowerTorchLongPressTriggered = false;
+                        mPowerTorchDownTime = event.getDownTime();
+
+                        if (mPowerTorchLongPress == null) {
+                            mPowerTorchLongPress = () -> {
+                                if (!mPowerTorchTracking || mPowerTorchLongPressTriggered
+                                        || mPowerManager == null)
+                                    return;
+
+                                // Guard against a stale callback after a new DOWN.
+                                if (SystemClock.uptimeMillis() - mPowerTorchDownTime
+                                        < ViewConfiguration.getLongPressTimeout())
+                                    return;
+
+                                // Do all camera-manager work off the input interception thread.
+                                ensureTorchManager(context, mHandler);
+                                mPowerTorchLongPressTriggered = toggleTorchSafely();
+                                if (mPowerTorchLongPressTriggered) {
+                                    performTorchHapticSafely();
                                 }
-                                mSensorManager.registerListener(mListenerTorch,
-                                        mProximitySensor, SensorManager.SENSOR_DELAY_FASTEST);
-                            } else {
-                                mPowerLongPress = true;
-                                callMethod(param.thisObject, "performHapticFeedback", new Class<?>[]{int.class, boolean.class, String.class}, HapticFeedbackConstants.LONG_PRESS, false, null);
-
-                                try {
-                                    mCameraManager.setTorchMode(mCameraId, !mTorchEnabled);
-                                    mTorchEnabled = !mTorchEnabled;
-                                } catch (Exception ignored) {
-                                }
-                            }
-                            if (wakeLockTorch.isHeld())
-                                wakeLockTorch.release();
-                        };
-                    }
-
-                    if (mCameraManager == null) {
-                        mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
-                        mCameraManager.registerTorchCallback(mTorchCallback, handler);
-                        try {
-                            String[] ids = mCameraManager.getCameraIdList();
-                            for (String id : ids) {
-                                CameraCharacteristics c = mCameraManager.getCameraCharacteristics(id);
-                                Boolean flashAvailable = c.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
-                                Integer lensFacing = c.get(CameraCharacteristics.LENS_FACING);
-                                if (flashAvailable != null && flashAvailable && lensFacing != null &&
-                                        lensFacing == CameraCharacteristics.LENS_FACING_BACK) {
-                                    mCameraId = id;
-                                }
-                            }
-                        } catch (Exception ignored) {
+                            };
                         }
-                    }
 
-                    if (mSkipTrack && (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)) {
-                        if ((event.getFlags() & KeyEvent.FLAG_FROM_SYSTEM) != 0 && !mPowerManager.isInteractive() && mAudioManager.isMusicActive()) {
-
-                            if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                                if (event.getRepeatCount() == 0) {
-                                    mVolumeLongPress = false;
-                                    handler.postDelayed(keyCode == KeyEvent.KEYCODE_VOLUME_UP ? mVolumeUpLongPress :
-                                            mVolumeDownLongPress, ViewConfiguration.getLongPressTimeout());
-                                }
-                            } else {
-                                handler.removeCallbacks(mVolumeUpLongPress);
-                                handler.removeCallbacks(mVolumeDownLongPress);
-
-                                if (!mVolumeLongPress) {
-                                    mAudioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
-                                            keyCode == KeyEvent.KEYCODE_VOLUME_UP ?
-                                                    AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER, 0);
-                                }
-                            }
-                            param.setResult(0);
+                        if (mHandler != null) {
+                            mHandler.postDelayed(mPowerTorchLongPress,
+                                    ViewConfiguration.getLongPressTimeout());
                         }
-                    } else if (mPowerTorch && keyCode == KeyEvent.KEYCODE_POWER) {
-                        if (mPowerManager.isInteractive())
-                            mDownTime = event.getEventTime();
+                    } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                        if (mHandler != null && mPowerTorchLongPress != null)
+                            mHandler.removeCallbacks(mPowerTorchLongPress);
 
-                        if ((!mPowerManager.isInteractive() && (event.getEventTime() - mDownTime > ViewConfiguration.getMultiPressTimeout()) || mTorchEnabled) &&
-                                event.getSource() != InputDevice.SOURCE_UNKNOWN) {
-
-                            if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                                if (event.getRepeatCount() == 0) {
-                                    mPowerLongPress = false;
-                                    wakeLockTorch.acquire(1000L);
-                                    handler.postDelayed(mPowerDownLongPress, ViewConfiguration.getLongPressTimeout());
-                                }
-                            } else {
-                                handler.removeCallbacks(mPowerDownLongPress);
-
-                                if (mPowerLongPress) {
-                                    mPowerLongPress = false;
-                                } else {
-                                    handler.post(() -> {
-                                        callMethod(context.getSystemService(Context.INPUT_SERVICE), "injectInputEvent", new KeyEvent(event.getEventTime(), event.getEventTime(), KeyEvent.ACTION_DOWN,
-                                                KeyEvent.KEYCODE_POWER, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_UNKNOWN), 0);
-                                        callMethod(context.getSystemService(Context.INPUT_SERVICE), "injectInputEvent", new KeyEvent(event.getEventTime(), event.getEventTime(), KeyEvent.ACTION_UP,
-                                                KeyEvent.KEYCODE_POWER, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_UNKNOWN), 0);
-                                    });
-                                }
-                                if (wakeLockTorch.isHeld())
-                                    wakeLockTorch.release();
-                            }
-                            param.setResult(0);
-                        }
+                        mPowerTorchTracking = false;
+                        mPowerTorchLongPressTriggered = false;
+                        mPowerTorchDownTime = 0L;
+                        /*
+                         * Do NOT set param.setResult(...).
+                         * Android 15 must receive the original UP event so that a short
+                         * press from a sleeping state continues to wake the device normally.
+                         */
                     }
                 }
             });
+
+            /*
+             * Android 15 PhoneWindowManager no longer has the legacy
+             * performHapticFeedback(int, boolean, String) signature used by the old module.
+             * The old callMethod(...) therefore throws NoSuchMethodError in system_server.
+             *
+             * We avoid PhoneWindowManager's private haptic method entirely and suppress only
+             * the normal long-press action when our torch gesture has fired.
+             */
+            findAndHookMethodIfExists("com.android.server.policy.PhoneWindowManager",
+                    param.classLoader, "powerLongPress", long.class, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (mPowerTorchLongPressTriggered) {
+                        mPowerTorchLongPressTriggered = false;
+                        param.setResult(null);
+                    }
+                }
+            });
+
             findAndHookMethodIfExists("com.android.server.power.PowerManagerService", param.classLoader, "systemReady", new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
@@ -849,6 +844,122 @@ public class Main implements IXposedHookZygoteInit, IXposedHookLoadPackage {
             });
         }
     }
+    private void ensureTorchManager(Context context, Handler handler) {
+        if (mCameraManager != null && mCameraId != null)
+            return;
+
+        try {
+            if (mCameraManager == null) {
+                mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+
+                if (mTorchCallback == null) {
+                    mTorchCallback = new CameraManager.TorchCallback() {
+                        @Override
+                        public void onTorchModeChanged(String cameraId, boolean enabled) {
+                            if (cameraId != null && cameraId.equals(mCameraId))
+                                mTorchEnabled = enabled;
+                        }
+
+                        @Override
+                        public void onTorchModeUnavailable(String cameraId) {
+                            if (cameraId != null && cameraId.equals(mCameraId))
+                                mTorchEnabled = false;
+                        }
+                    };
+                }
+
+                if (mCameraManager != null) {
+                    mCameraManager.registerTorchCallback(mTorchCallback,
+                            handler != null ? handler : new Handler());
+                }
+            }
+
+            if (mCameraManager != null && mCameraId == null) {
+                String[] ids = mCameraManager.getCameraIdList();
+                for (String id : ids) {
+                    CameraCharacteristics c =
+                            mCameraManager.getCameraCharacteristics(id);
+                    Boolean flashAvailable =
+                            c.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                    Integer lensFacing =
+                            c.get(CameraCharacteristics.LENS_FACING);
+
+                    if (Boolean.TRUE.equals(flashAvailable)
+                            && Integer.valueOf(CameraCharacteristics.LENS_FACING_BACK)
+                            .equals(lensFacing)) {
+                        mCameraId = id;
+                        break;
+                    }
+                }
+
+                // Some devices expose a usable torch camera without LENS_FACING_BACK
+                // being populated. Fall back to any camera that advertises a flash.
+                if (mCameraId == null) {
+                    for (String id : ids) {
+                        CameraCharacteristics c =
+                                mCameraManager.getCameraCharacteristics(id);
+                        Boolean flashAvailable =
+                                c.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                        if (Boolean.TRUE.equals(flashAvailable)) {
+                            mCameraId = id;
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            log("Power torch: camera initialization failed: " + t);
+        }
+    }
+
+    private void performHapticFeedbackSafely(Context context) {
+        try {
+            Vibrator vibrator = mVibrator;
+            if (vibrator == null && context != null) {
+                vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+                mVibrator = vibrator;
+            }
+
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.vibrate(
+                        VibrationEffect.createOneShot(
+                                40L, VibrationEffect.DEFAULT_AMPLITUDE));
+            }
+        } catch (Throwable t) {
+            log("Haptic feedback failed: " + t);
+        }
+    }
+
+    private boolean toggleTorchSafely() {
+        if (!mPowerTorch || mCameraManager == null || mCameraId == null)
+            return false;
+
+        final boolean targetState = !mTorchEnabled;
+        try {
+            mCameraManager.setTorchMode(mCameraId, targetState);
+            mTorchEnabled = targetState;
+            return true;
+        } catch (Throwable t) {
+            log("Power torch: setTorchMode failed: " + t);
+            return false;
+        }
+    }
+
+    private void performTorchHapticSafely() {
+        if (mVibrator == null)
+            return;
+
+        try {
+            if (mVibrator.hasVibrator()) {
+                mVibrator.vibrate(
+                        VibrationEffect.createOneShot(
+                                40L, VibrationEffect.DEFAULT_AMPLITUDE));
+            }
+        } catch (Throwable t) {
+            log("Power torch: vibration failed: " + t);
+        }
+    }
+
     private void updatePreferences(Intent intent) {
         Bundle extras = intent.getExtras();
         String key = extras.getString("preference");
